@@ -1,0 +1,13 @@
+name = "kiurcode-qrs"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "public"
+
+# Cuando crees tu base de datos D1 en el panel de Cloudflare (Workers & Pages -> D1 -> Create database "kiurcode-qrs-db"),
+# vinculala en tu proyecto Pages como variable "DB" (Settings -> Bindings -> Add -> D1 database -> Variable name: DB).
+# La aplicación creará las tablas y cargará tus 80 QRs + historial de hits automáticamente en el primer uso.
+#
+# Si desplegás por consola con Wrangler CLI, reemplazá database_id con el ID que te da Cloudflare:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "kiurcode-qrs-db"
+# database_id = "REEMPLAZAR_CON_TU_DATABASE_ID"

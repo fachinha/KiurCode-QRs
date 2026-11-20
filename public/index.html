@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KiurCode QRs — Gestión de QRs Dinámicos y Analytics</title>
+
+  <!-- Google Fonts: Outfit, Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js & QRious (Instant client-side QR Canvas Generator) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- ====================================================================
+       TOPBAR NAVIGATION
+       ==================================================================== -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="brand hero-title">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            <path d="M14 14h3v3h-3z"></path>
+            <path d="M18 18h3v3h-3z"></path>
+            <path d="M14 19h2"></path>
+            <path d="M19 14v2"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>KiurCode QRs</h1>
+          <p>Motor de Redirección Dinámica en Cloudflare</p>
+        </div>
+      </a>
+
+      <nav class="nav-tabs hero-desc" aria-label="Vistas principales">
+        <button type="button" class="nav-tab active" data-view="sheet">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="3" y1="15" x2="21" y2="15"></line>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+          <span>Planilla Config</span>
+          <span class="tab-count" id="navQrCount">80</span>
+        </button>
+
+        <button type="button" class="nav-tab" data-view="analytics">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span>Analytics</span>
+          <span class="tab-count" id="navHitsCount">0</span>
+        </button>
+
+        <button type="button" class="nav-tab" data-view="print">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Plancha QRs y GitHub</span>
+        </button>
+      </nav>
+
+      <div class="topbar-right hero-ctas">
+        <div class="save-status saved" id="saveStatusIndicator">
+          <span class="dotlive"></span>
+          <span id="saveStatusText">Sincronizado</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====================================================================
+       MAIN CONTENT
+       ==================================================================== -->
+  <main class="main-container">
+
+    <!-- LIVE LAST SCAN BANNER (Ideal para identificar qué QR físico acabás de escanear) -->
+    <div class="live-scan-banner hero-visual" id="liveScanBanner">
+      <div class="live-scan-info">
+        <span class="dotlive"></span>
+        <span>Último escaneo registrado:</span>
+        <span class="live-scan-key" id="lastScannedKey">Cargando...</span>
+        <span id="lastScannedDetails" style="color:#CBD5E1;"></span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" class="btn btn-dark" id="btnJumpLastScanned" style="padding:6px 12px; font-size:12.5px; border-color:rgba(255,255,255,0.18);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Ubicar en planilla</span>
+        </button>
+        <button type="button" class="btn btn-dark" id="btnRefreshLive" title="Actualizar datos ahora" style="padding:6px 10px; font-size:12.5px; border-color:rgba(255,255,255,0.18);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================================================================
+         VIEW 1: PLANILLA EDITABLE (GOOGLE SHEETS EXPERIENCE)
+         ================================================================== -->
+    <section class="view-section active" id="view-sheet">
+
+      <div class="sheet-header-card">
+        <div class="sheet-header-top">
+          <div class="sheet-title-group">
+            <h2>Planilla de QRs Dinámicos</h2>
+            <p>Hacé clic en cualquier celda de destino o nombre del local para editar. Se guarda automáticamente al salir o presionar Enter.</p>
+          </div>
+
+          <div class="sheet-actions">
+            <button type="button" class="btn" id="btnExportCsv">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Exportar CSV</span>
+            </button>
+
+            <button type="button" class="btn" id="btnOpenImportModal">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Importar desde Sheets</span>
+            </button>
+
+            <button type="button" class="btn-live-cta" id="btnAddBatchQrs">
+              <span class="dotlive"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Agregar +10 QRs</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Base Page Config Row (Like Row 1 in Config sheet) -->
+        <div class="base-page-bar">
+          <span class="base-page-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            Base Page (URL de los QRs):
+          </span>
+          <input type="text" id="basePageInput" class="base-page-input" value="https://fachinha.github.io/QRdinamicos/" placeholder="https://fachinha.github.io/QRdinamicos/">
+          <button type="button" class="btn" id="btnUseCurrentDomain" style="padding:7px 12px; font-size:12.5px;">
+            Usar dominio actual de Cloudflare
+          </button>
+          <button type="button" class="btn" id="btnUseGithubDomain" style="padding:7px 12px; font-size:12.5px;">
+            Usar GitHub Pages (fachinha)
+          </button>
+        </div>
+
+        <!-- Search & Filter Pills -->
+        <div class="sheet-toolbar">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="sheetSearchInput" class="search-input" placeholder="Buscar por clave (ej. QR000014), local (vinarte, polleria) o link...">
+          </div>
+
+          <div class="filter-pills">
+            <button type="button" class="filter-btn active" data-filter="ALL">
+              <span>Todos</span>
+              <strong id="countAll">80</strong>
+            </button>
+            <button type="button" class="filter-btn" data-filter="ASSIGNED">
+              <span>Asignados</span>
+              <strong id="countAssigned">0</strong>
+            </button>
+            <button type="button" class="filter-btn" data-filter="FREE">
+              <span>Libres</span>
+              <strong id="countFree">0</strong>
+            </button>
+            <button type="button" class="filter-btn" data-filter="SCANNED_EMPTY" title="QRs que fueron escaneados pero aún no tienen link asignado">
+              <span>Escaneados sin link</span>
+              <strong id="countScannedEmpty">0</strong>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editable Spreadsheet Grid -->
+      <div class="spreadsheet-card">
+        <div class="spreadsheet-scroll">
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th class="col-idx">#</th>
+                <th class="col-key">A — Key (Clave)</th>
+                <th class="col-qr">B — Código QR</th>
+                <th class="col-url">C — Target (Link de Destino)</th>
+                <th class="col-place">E — Nombre del Local / Cliente</th>
+                <th class="col-hits">Hits</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="sheetTableBody">
+              <!-- Populated dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================================================================
+         VIEW 2: ANALYTICS DASHBOARD
+         ================================================================== -->
+    <section class="view-section" id="view-analytics">
+
+      <div class="analytics-filters-bar">
+        <div>
+          <h2 style="margin:0; font-size:24px; font-weight:800;">Estadísticas de Escaneos</h2>
+          <p style="margin:4px 0 0; font-size:14px; color:var(--text-secondary);">Métricas en tiempo real por código QR, comercio y período de fechas.</p>
+        </div>
+
+        <div class="filters-group">
+          <div class="filter-field">
+            <label for="qrFilter">QR / Local</label>
+            <select id="qrFilter" class="filter-select">
+              <option value="ALL">Todos los QR</option>
+            </select>
+          </div>
+
+          <div class="filter-field">
+            <label for="periodFilter">Período</label>
+            <select id="periodFilter" class="filter-select">
+              <option value="7">Últimos 7 días</option>
+              <option value="30" selected>Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="365">Último año</option>
+              <option value="ALL">Todo el tiempo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Local / Filtro activo</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FA231" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-value" id="kpiPlace">Todos</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Total de hits</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FA231" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-value" id="kpiTotalHits">0</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Promedio diario</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FA231" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-value" id="kpiAverageHits">0</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Último escaneo</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FA231" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div class="kpi-value" id="kpiLastHit" style="font-size:24px;">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="panel-card" style="margin-bottom:0;">
+          <div class="panel-header">
+            <h2>Hits por día</h2>
+          </div>
+          <div class="chart-box">
+            <canvas id="hitsChart"></canvas>
+          </div>
+        </div>
+
+        <div class="panel-card" style="margin-bottom:0;">
+          <div class="panel-header">
+            <h2>Ranking por local (Top 10)</h2>
+          </div>
+          <div class="chart-box">
+            <canvas id="rankingChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranking Table -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2>Rendimiento por QR Registrado</h2>
+        </div>
+        <div class="spreadsheet-scroll">
+          <table class="analytics-table">
+            <thead>
+              <tr>
+                <th>QR</th>
+                <th>Lugar / Local</th>
+                <th>Destino Actual</th>
+                <th>Hits</th>
+                <th>Último Hit</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Raw Hits Log Table (Like the Hits sheet in Google Sheets) -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2>Historial Reciente de Escaneos (Hoja Hits)</h2>
+          <span style="font-size:13px; color:var(--text-muted);">Últimos 50 escaneos del filtro seleccionado</span>
+        </div>
+        <div class="spreadsheet-scroll">
+          <table class="analytics-table">
+            <thead>
+              <tr>
+                <th>Fecha y Hora</th>
+                <th>Clave QR</th>
+                <th>Local</th>
+                <th>URL Redirigida</th>
+                <th>Borrar</th>
+              </tr>
+            </thead>
+            <tbody id="recentHitsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================================================================
+         VIEW 3: PLANCHA DE IMPRESIÓN DE QRs & CONEXIÓN GITHUB PAGES
+         ================================================================== -->
+    <section class="view-section" id="view-print">
+
+      <div class="panel-card no-print">
+        <div class="panel-header">
+          <div>
+            <h2>Conexión Instantánea con tus QRs ya impresos (GitHub Pages)</h2>
+            <p style="margin:4px 0 0; font-size:14px; color:var(--text-secondary);">
+              Si ya tenés QRs impresos apuntando a <code>https://fachinha.github.io/QRdinamicos/?k=QR000011</code>, reemplazá el <code>index.html</code> de tu repositorio de GitHub por este código para que redirijan en milisegundos usando Cloudflare en vez de Google Apps Script.
+            </p>
+          </div>
+          <button type="button" class="btn-live-cta" id="btnCopyGithubCode">
+            <span class="dotlive"></span>
+            <span>Copiar index.html para GitHub</span>
+          </button>
+        </div>
+
+        <pre id="githubSnippetCode" class="mono" style="background:#0F1419; color:#E2E8F0; padding:16px; border-radius:12px; overflow-x:auto; font-size:12.5px; line-height:1.5; margin:0;"></pre>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header no-print">
+          <div>
+            <h2>Plancha de QRs para Imprimir o Descargar</h2>
+            <p style="margin:4px 0 0; font-size:14px; color:var(--text-secondary);">
+              Todos los códigos incluyen su etiqueta <code>QR0000XX</code> debajo para identificar cada sticker antes de entregarlo al local.
+            </p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn btn-dark" onclick="window.print()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              <span>Imprimir / Guardar PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="print-grid" id="printableQrGrid"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ====================================================================
+       MODAL: VISTA PREVIA Y DESCARGA DE QR EN ALTA RESOLUCIÓN
+       ==================================================================== -->
+  <div class="modal-backdrop" id="qrModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="modalQrTitle">QR000011</h3>
+          <p id="modalQrPlace" style="margin:2px 0 0; font-size:13.5px; color:var(--text-secondary);">vinarte google</p>
+        </div>
+        <button type="button" class="btn btn-icon" id="btnCloseQrModal" aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="qr-preview-stage">
+        <canvas id="modalQrCanvas" width="600" height="680"></canvas>
+        <div class="mono" id="modalQrEncodedUrl" style="margin-top:12px; font-size:11.5px; color:var(--text-muted); word-break:break-all;"></div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button type="button" class="btn-live-cta" id="btnDownloadHighResQr" style="width:100%;">
+          <span class="dotlive"></span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Descargar PNG Alta Resolución (con código)</span>
+        </button>
+
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn" id="btnCopyQrLink" style="flex:1;">
+            Copiar Link del QR
+          </button>
+          <a href="#" target="_blank" rel="noopener" class="btn" id="btnTestQrRedirect" style="flex:1;">
+            Probar Redirección
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       MODAL: IMPORTAR DESDE GOOGLE SHEETS / CSV
+       ==================================================================== -->
+  <div class="modal-backdrop" id="importModal">
+    <div class="modal-card" style="max-width:580px;">
+      <div class="modal-header">
+        <div>
+          <h3>Importar desde Google Sheets</h3>
+          <p style="margin:2px 0 0; font-size:13.5px; color:var(--text-secondary);">Pegá tus filas copiadas del Google Sheet o formato CSV (Clave, URL, Local).</p>
+        </div>
+        <button type="button" class="btn btn-icon" id="btnCloseImportModal" aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <textarea id="importTextarea" class="mono" rows="8" style="width:100%; padding:12px; border-radius:10px; border:1px solid var(--border-light); font-size:12px; margin-bottom:14px;" placeholder="Ejemplo:&#10;QR000011,,https://search.google.com/local/writereview?placeid=..., ,vinarte google&#10;QR000012,,https://wa.me/5492944..., ,electronica fricke"></textarea>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn" id="btnCancelImport">Cancelar</button>
+        <button type="button" class="btn-live-cta" id="btnConfirmImport">
+          <span class="dotlive"></span>
+          <span>Importar y Actualizar QRs</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       FLOATING ACTION BUTTON (ALWAYS VISIBLE ON DESKTOP & MOBILE)
+       ==================================================================== -->
+  <div class="fab-container">
+    <button type="button" class="btn-live-cta fab-btn" id="fabQuickLocate" title="Ir al primer QR libre o recién escaneado">
+      <span class="dotlive"></span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+        <line x1="17" y1="14" x2="17" y2="20"></line>
+        <line x1="14" y1="17" x2="20" y2="17"></line>
+      </svg>
+      <span>Asignar Próximo QR Libre</span>
+    </button>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "kiurcode-qrs",
+  "version": "1.0.0",
+  "description": "Sistema de QRs Dinámicos tipo Hoja de Cálculo + Analytics ultrarrápido para Cloudflare Pages y D1",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node scripts/generate-seed.js",
+    "pages:dev": "npx wrangler pages dev public",
+    "pages:deploy": "npx wrangler pages deploy public --project-name kiurcode-qrs"
+  }
+}
