@@ -61,7 +61,8 @@ async function fetchAndRenderAll() {
     updateAnalyticsDashboard();
     renderPrintableGridAndSnippet();
 
-    setSaveStatus('saved', 'Sincronizado');
+    const modeLabel = STATE.storageMode === 'cloudflare-d1' ? 'Sincronizado (D1)' : 'Sincronizado';
+    setSaveStatus('saved', modeLabel);
   } catch (err) {
     console.error('Error cargando datos:', err);
     setSaveStatus('saving', 'Modo sin conexión');
